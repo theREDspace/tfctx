@@ -53,6 +53,54 @@ _tfctx_clear_context() {
   unset TF_CLI_ARGS_init TF_CLI_ARGS_plan TF_CLI_ARGS_apply TF_CLI_ARGS_destroy
 }
 
+# Detect environment from terraform state file
+# Users can override this function for custom detection logic
+# Arguments: $1 = path to terraform.tfstate file, $2 = terraform root directory
+# Returns: environment name via stdout, or empty if not detected
+tfctx_detect_env() {
+  local tfstate_file="$1"
+  local tf_root="$2"
+  
+  # Read the backend config from terraform state
+  local backend_config
+  if command -v jq >/dev/null 2>&1; then
+    _tfctx_debug "using jq to parse backend config"
+    backend_config=$(jq -r '.backend.config.key // empty' "$tfstate_file" 2>/dev/null)
+  else
+    # Fallback without jq - extract key from backend config
+    _tfctx_debug "using grep to parse backend config"
+    backend_config=$(grep -o '"key"[[:space:]]*:[[:space:]]*"[^"]*"' "$tfstate_file" 2>/dev/null | sed 's/.*"\([^"]*\)"/\1/')
+  fi
+
+  _tfctx_debug "detected backend config: $backend_config"
+  
+  # Extract environment from key path by checking config files
+  if [[ -n "$backend_config" ]]; then
+    _tfctx_debug "searching for matching environment config..."
+    
+    # Look through all environment config files to find matching key
+    for env_dir in ${tf_root}/${TFCTX_ROOT}/*(N/); do
+      local env_name="${env_dir:t}"  # Get just the directory name
+      local config_file="${env_dir}/${TFCTX_BACKEND}"
+      
+      if [[ -f "$config_file" ]]; then
+        # Extract key from config.hcl - more robust extraction
+        local config_key=""
+        config_key=$(grep -E '^\s*key\s*=' "$config_file" | sed -n 's/^[^"]*"\([^"]*\)".*/\1/p')
+        
+        _tfctx_debug "checking $env_name: config key '$config_key' vs backend key '$backend_config'"
+        if [[ -n "$config_key" && "$config_key" == "$backend_config" ]]; then
+          echo "$env_name"
+          _tfctx_debug "found matching environment: $env_name"
+          return 0
+        fi
+      fi
+    done
+  fi
+  
+  return 1
+}
+
 # Auto-detect environment when changing directories
 _tfctx_chpwd() {
   _tfctx_debug "checking Terraform context in $(pwd)"
@@ -76,42 +124,7 @@ _tfctx_chpwd() {
 
   # Check if terraform is initialized and extract backend config
   if [[ -d "$tf_root/.terraform" && -f "$tf_root/.terraform/terraform.tfstate" ]]; then
-    # Read the backend config from terraform state
-    local backend_config
-    if command -v jq >/dev/null 2>&1; then
-      _tfctx_debug "using jq to parse backend config"
-      backend_config=$(jq -r '.backend.config.key // empty' "$tf_root/.terraform/terraform.tfstate" 2>/dev/null)
-    else
-      # Fallback without jq - extract key from backend config
-      _tfctx_debug "using grep to parse backend config"
-      backend_config=$(grep -o '"key"[[:space:]]*:[[:space:]]*"[^"]*"' "$tf_root/.terraform/terraform.tfstate" 2>/dev/null | sed 's/.*"\([^"]*\)"/\1/')
-    fi
-
-    _tfctx_debug "detected backend config: $backend_config"
-    
-    # Extract environment from key path by checking config files
-    if [[ -n "$backend_config" ]]; then
-      _tfctx_debug "searching for matching environment config..."
-      
-      # Look through all environment config files to find matching key
-      for env_dir in ${tf_root}/${TFCTX_ROOT}/*(N/); do
-        local env_name="${env_dir:t}"  # Get just the directory name
-        local config_file="${env_dir}/${TFCTX_BACKEND}"
-        
-        if [[ -f "$config_file" ]]; then
-          # Extract key from config.hcl - more robust extraction
-          local config_key=""
-          config_key=$(grep -E '^\s*key\s*=' "$config_file" | sed -n 's/^[^"]*"\([^"]*\)".*/\1/p')
-          
-          _tfctx_debug "checking $env_name: config key '$config_key' vs backend key '$backend_config'"
-          if [[ -n "$config_key" && "$config_key" == "$backend_config" ]]; then
-            detected_env="$env_name"
-            _tfctx_debug "found matching environment: $detected_env"
-            break
-          fi
-        fi
-      done
-    fi
+    detected_env=$(tfctx_detect_env "$tf_root/.terraform/terraform.tfstate" "$tf_root")
   fi
   
   # Switch context if we detected a different environment or root

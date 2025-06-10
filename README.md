@@ -17,10 +17,20 @@ envs/
 
 # Features
 
-- tfctx <env>: switches both the -backend-config and -var-file arguments for you.
+- tfctx <env>: switches and controls both the -backend-config and -var-file arguments for you.
 - optional automatic `terraform init` (enabled by default)
 - tab-completion of available environments
-- $(tfctx_prompt_info) helper so your prompt will show the active tfenv.
+- $(tfctx_prompt_info) helper to show in your terminal prompt will show the active tfenv.
+
+# Custom enviornment detection
+
+You can override the detection functionality to your own custom function using the below as an example.
+
+```
+tfctx_detect_env() { echo "dev"; }
+```
+
+But by default it uses jq, and compares the current `tfstate` key to your environment configurations to find a matching key used by your s3 remote.
 
 # Installation
 
@@ -45,4 +55,5 @@ export TFCTX_VARS="variables.tfvars"       # variables file filename
 export TFCTX_INIT_OPTS=""                  # extra flags for every init
 export TFCTX_VAR_OPTS=""                   # extra flags for plan/apply
 export TFCTX_AUTO_INIT=0                   # disable auto-init
+export TFCTX_DEBUG=1                       # enables debug logging
 ```
