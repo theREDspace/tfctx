@@ -269,6 +269,8 @@ _tfctx() {
         local _log
         # Change to terraform root directory for init
         (
+          # Disable the chpwd hook to prevent context changes
+          add-zsh-hook -d chpwd _tfctx_chpwd
           cd "$tf_root"
           if ! _log=$(terraform init 2>&1); then
             echo "tfctx: terraform init failed — see log below" >&2
