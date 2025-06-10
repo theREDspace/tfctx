@@ -275,6 +275,7 @@ _tfctx() {
           if ! _log=$(terraform init 2>&1); then
             echo "tfctx: terraform init failed — see log below" >&2
             printf '%s\n' "${_log}" >&2
+            _tfctx_clear_context
             exit 3
           fi
         ) || return 3
