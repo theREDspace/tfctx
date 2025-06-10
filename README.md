@@ -26,6 +26,8 @@ envs/
 
 You can override the detection functionality to your own custom function using the below as an example.
 
+Two arguments are passed to this function, the Terraform root directory path that was detected, and the path to the `terraform.tfstate` file.
+
 ```
 tfctx_detect_env() { echo "dev"; }
 ```
