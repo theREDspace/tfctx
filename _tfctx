@@ -1,0 +1,5 @@
+#compdef tfctx
+local root="${TFCTX_ROOT:-envs}"
+local -a envs
+envs=(${(F)"$(print -l ${root}/*(:t) 2>/dev/null)"})
+_arguments "1:environment:(${envs})"
