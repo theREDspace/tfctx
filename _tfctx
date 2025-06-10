@@ -1,5 +1,62 @@
 #compdef tfctx
+
+# Find the root directory containing .terraform (searching upward)
+_tfctx_find_root() {
+  local dir="$PWD"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -d "$dir/.terraform" ]]; then
+      echo "$dir"
+      return 0
+    fi
+    dir="${dir:h}"  # Get parent directory
+  done
+  return 1
+}
+
+local tf_root="${TFCTX_ROOT_DIR:-$PWD}"
 local root="${TFCTX_ROOT:-envs}"
+
+# Try to find terraform root if not set
+if [[ -z "$TFCTX_ROOT_DIR" ]]; then
+  if tf_root=$(_tfctx_find_root); then
+    # Found terraform root
+  else
+    # Use current directory
+    tf_root="$PWD"
+  fi
+fi
+
 local -a envs
-envs=(${(F)"$(print -l ${root}/*(:t) 2>/dev/null)"})
-_arguments "1:environment:(${envs})"
+local -a commands
+
+# Get available environments
+for env_dir in ${tf_root}/${root}/*(N/); do
+  if [[ -d "$env_dir" ]]; then
+    envs+=("${env_dir:t}")
+  fi
+done
+
+# Define commands
+commands=('create' 'ls')
+
+if (( CURRENT == 2 )); then
+  # Add environments first (preserving order)
+  if (( ${#envs[@]} > 0 )); then
+    local -a env_completions
+    for env in ${envs[@]}; do
+      env_completions+=("$env:Switch to $env environment")
+    done
+    _describe -V 'environments' env_completions
+  fi
+  
+  # Add commands
+  local -a command_completions
+  command_completions=(
+    "create:Create a new environment"
+    "ls:List available environments"
+  )
+  _describe -V 'commands' command_completions
+elif [[ $words[2] == "create" && CURRENT == 3 ]]; then
+  # After 'create', don't offer completions (user types new env name)
+  return 1
+fi

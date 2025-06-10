@@ -229,7 +229,7 @@ EOF
   echo "  - $vars_file (environment variables)"
 }
 
-_tfctx() {
+tfctx() {
   local cmd="$1"
   
   case "$cmd" in
@@ -283,8 +283,6 @@ _tfctx() {
       ;;
   esac
 }
-
-alias tfctx='_tfctx'
 
 tfctx_prompt_info() {
   [[ -n "${TFCTX_ENV}" ]] && printf "%%F{cyan}[%%F{white}%s%%F{cyan}]%%f" "${TFCTX_ENV}"
