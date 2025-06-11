@@ -51,7 +51,7 @@ plugins+=(tfctx)
 # Configuration
 
 ```
-export TFCTX_ROOT="terraform/envs"   # default: envs, define where to look for environments relative to the detected terraform root.
+export TFCTX_ROOT="terraform/envs"         # default: envs, defined relative to the detected terraform root.
 export TFCTX_BACKEND="config.hcl"          # backend config filename
 export TFCTX_VARS="variables.tfvars"       # variables file filename
 export TFCTX_INIT_OPTS=""                  # extra flags for every init
