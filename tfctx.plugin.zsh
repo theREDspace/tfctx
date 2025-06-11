@@ -3,6 +3,7 @@
 : ${TFCTX_ROOT:="envs"}             # parent dir holding env folders
 : ${TFCTX_BACKEND:="config.hcl"}    # backend config filename
 : ${TFCTX_VARS:="variables.tfvars"} # variables file filename
+: ${TFCTX_CONFIG_KEY:="key"}        # key to extract from backend config
 : ${TFCTX_INIT_OPTS:=""}            # extra flags for every terraform init
 : ${TFCTX_VAR_OPTS:=""}             # extra flags for plan/apply/destroy
 : ${TFCTX_AUTO_INIT:=1}             # 1 = run terraform init automatically
@@ -65,11 +66,11 @@ tfctx_detect_env() {
   local backend_config
   if command -v jq >/dev/null 2>&1; then
     _tfctx_debug "using jq to parse backend config"
-    backend_config=$(jq -r '.backend.config.key // empty' "$tfstate_file" 2>/dev/null)
+    backend_config=$(jq -r ".backend.config.$TFCTX_CONFIG_KEY // empty" "$tfstate_file" 2>/dev/null)
   else
     # Fallback without jq - extract key from backend config
     _tfctx_debug "using grep to parse backend config"
-    backend_config=$(grep -o '"key"[[:space:]]*:[[:space:]]*"[^"]*"' "$tfstate_file" 2>/dev/null | sed 's/.*"\([^"]*\)"/\1/')
+    backend_config=$(grep -o "\"$TFCTX_CONFIG_KEY\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$tfstate_file" 2>/dev/null | sed 's/.*"\([^"]*\)"/\1/')
   fi
 
   _tfctx_debug "detected backend config: $backend_config"
@@ -86,9 +87,9 @@ tfctx_detect_env() {
       if [[ -f "$config_file" ]]; then
         # Extract key from config.hcl - more robust extraction
         local config_key=""
-        config_key=$(grep -E '^\s*key\s*=' "$config_file" | sed -n 's/^[^"]*"\([^"]*\)".*/\1/p')
+        config_key=$(grep -E "^\s*$TFCTX_CONFIG_KEY\s*=" "$config_file" | sed -n 's/^[^"]*"\([^"]*\)".*/\1/p')
         
-        _tfctx_debug "checking $env_name: config key '$config_key' vs backend key '$backend_config'"
+        _tfctx_debug "checking $env_name: config '$config_key' vs backend '$backend_config'"
         if [[ -n "$config_key" && "$config_key" == "$backend_config" ]]; then
           echo "$env_name"
           _tfctx_debug "found matching environment: $env_name"

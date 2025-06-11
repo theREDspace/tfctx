@@ -53,6 +53,7 @@ plugins+=(tfctx)
 ```
 export TFCTX_ROOT="terraform/envs"         # default: envs, defined relative to the detected terraform root.
 export TFCTX_BACKEND="config.hcl"          # backend config filename
+export TFCTX_CONFIG_KEY="bucket"           # if you use a different bucket
 export TFCTX_VARS="variables.tfvars"       # variables file filename
 export TFCTX_INIT_OPTS=""                  # extra flags for every init
 export TFCTX_VAR_OPTS=""                   # extra flags for plan/apply
