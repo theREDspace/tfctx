@@ -290,3 +290,11 @@ tfctx() {
 tfctx_prompt_info() {
   [[ -n "${TFCTX_ENV}" ]] && printf "%%F{cyan}[%%F{white}%s%%F{cyan}]%%f" "${TFCTX_ENV}"
 }
+
+tfctx_pr_plan() {
+  local OUT=$(mktemp -t tf.plan)
+  terraform plan -out ${OUT}
+  printf '<details>\n<summary>terraform plan (%s)</summary>\n```\n%s\n```\n</details>\n' "$TFCTX_ENV" "$(terraform show -no-color ${OUT})" | pbcopy
+  echo
+  echo ✅ Copied Github Markdown for terraform plan for $TFCTX_ENV to clipboard
+}
