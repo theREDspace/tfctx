@@ -75,6 +75,10 @@ In bash:
 PS1='$(tfctx_prompt_info) '$PS1
 ```
 
+# Plan comments for pull requests
+
+`tfctx_pr_plan` runs `terraform plan` for the active environment and copies the plan to the clipboard as a collapsed block, ready to paste into a GitHub pull request comment. It uses `pbcopy`, so it needs macOS.
+
 # Configuration
 
 Settings are read by the `tfctx` binary, so they must be exported.

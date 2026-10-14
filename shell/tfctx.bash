@@ -44,6 +44,20 @@ tfctx_prompt_info() {
   [[ -n "${TFCTX_ENV-}" ]] && printf '[%s]' "$TFCTX_ENV"
 }
 
+# Runs terraform plan and copies it to the clipboard (with pbcopy) as a
+# collapsed block to paste into a GitHub PR comment.
+tfctx_pr_plan() {
+  local plan rc
+  plan=$(mktemp "${TMPDIR:-/tmp}/tf.plan.XXXXXX") || return
+  terraform plan -out "$plan" &&
+    printf '<details>\n<summary>terraform plan (%s)</summary>\n```\n%s\n```\n</details>\n' \
+      "${TFCTX_ENV-}" "$(terraform show -no-color "$plan")" | pbcopy &&
+    printf '\n✅ Copied GitHub Markdown for terraform plan for %s to clipboard\n' "${TFCTX_ENV-}"
+  rc=$?
+  rm -f "$plan"
+  return $rc
+}
+
 _tfctx_complete() {
   COMPREPLY=()
   (( COMP_CWORD == 1 )) || return 0

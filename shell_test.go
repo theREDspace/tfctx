@@ -19,6 +19,23 @@ func TestShellIntegration(t *testing.T) {
 	if err := os.Symlink(self, filepath.Join(bin, "tfctx")); err != nil {
 		t.Fatal(err)
 	}
+	// Stubs for tfctx_pr_plan. The pbcopy one also keeps the tests off the
+	// real clipboard.
+	stubs := map[string]string{
+		"terraform": `#!/bin/sh
+case $1 in
+plan) [ -z "${TF_FAIL-}" ] || { echo "plan failed" >&2; exit 1; }
+      echo planned; echo "PLAN $TF_CLI_ARGS_plan" > "$3" ;;
+show) cat "$3" ;;
+esac
+`,
+		"pbcopy": "#!/bin/sh\ncat >> \"$CLIPBOARD\"\n",
+	}
+	for name, script := range stubs {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
 	root := newProject(t, "prod")
 
 	const prelude = `
@@ -54,6 +71,22 @@ cd-in env=dev root=ROOT
 cd-out env= root=
 `,
 		},
+		{
+			// A failed plan copies nothing, and the plan file is removed
+			// either way.
+			name: "tfctx_pr_plan",
+			script: `
+cd "$PROJECT"; prompt
+tfctx_pr_plan; echo "ok=$?"
+export TF_FAIL=1
+tfctx_pr_plan; echo "fail=$?"
+cat "$CLIPBOARD"; ls -A "$TMPDIR"
+`,
+			want: "planned\n\n✅ Copied GitHub Markdown for terraform plan for prod to clipboard\nok=0\n" +
+				"plan failed\nfail=1\n" +
+				"<details>\n<summary>terraform plan (prod)</summary>\n```\n" +
+				"PLAN -var-file='ROOT/envs/prod/variables.tfvars'\n```\n</details>\n",
+		},
 	}
 
 	// prompt stands in for the shell drawing a prompt: zsh's hook fires on
@@ -79,6 +112,8 @@ cd-out env= root=
 					"TFCTX_AUTO_INIT=0",
 					"SHELL_NAME="+sh.name,
 					"PROJECT="+root,
+					"TMPDIR="+t.TempDir(),
+					"CLIPBOARD="+filepath.Join(t.TempDir(), "clipboard"),
 				)
 				out, err := cmd.CombinedOutput()
 				if err != nil {
